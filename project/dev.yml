@@ -1,0 +1,58 @@
+version: "3.7"
+services:
+  nginx:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-nginx:${TAG?err}
+    hostname: nginx
+    networks:
+      default:
+      sdknet:
+      ext-nginx:
+        aliases:
+          - ${PROJ_NAME:?err}-nginx
+    volumes:
+      - ${HOST_SDK_ROOT:?err}/project/nginx/conf.d:/etc/nginx/conf.d:ro
+
+  site:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-site:${TAG?err}
+    hostname: site
+    volumes:
+      - ${HOST_SDK_ROOT:?err}/project/site:/site
+    environment:
+      - DEBUG=1
+
+  pgpool:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-pgpool:${TAG?err}
+    hostname: pgpool
+    command: entrypoint --dev
+    networks:
+      default:
+      sdknet:
+
+  pg1:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-db:${TAG?err}
+    hostname: pg1 # required by failover actions, and rep tool
+    volumes:
+      - ${HOST_SDK_ROOT:?err}/project/db/bin:/opt/bin:ro
+      - pg1-data:/var/lib/postgresql/12/main
+      - pg1-wal:/pg_wal_archive
+
+  # pg2:
+  #   image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-db:${TAG?err}
+  #   hostname: pg2 # required by failover actions, and rep tool
+  #   volumes:
+  #     - ${HOST_SDK_ROOT:?err}/project/db/bin:/opt/bin:ro
+  #     - ${HOST_SDK_ROOT:?err}/tmp/db/pg2_data:/var/lib/postgresql/12/main
+  #     - ${HOST_SDK_ROOT:?err}/tmp/db/pg2_wal:/pg_wal_archive
+
+networks:
+  ext-nginx:
+    external: true
+  sdknet:
+    name: ${PROJ_NAME:?err}_sdknet
+    external: true
+
+volumes:
+  pg1-data:
+    name: ${PROJ_NAME:?err}_pg1-data
+  pg1-wal:
+    name: ${PROJ_NAME:?err}_pg1-wal

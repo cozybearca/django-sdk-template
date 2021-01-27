@@ -1,0 +1,60 @@
+{% load i18n %}
+{% load static %}
+
+<!DOCTYPE html>
+<html class="no-js">
+
+<head>
+    <title></title>
+
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta name="description" content="{% block description %}{% endblock %}">
+    <meta name="google-signin-client_id"
+        content="144135589714-0h6ikct9rq9nl0p7p3poul1rm6bekpi1.apps.googleusercontent.com">
+    <meta charset="UTF-8">
+
+    <link rel="shortcut icon" type="image/ico" href="{% static 'favicon.ico' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@100;400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,400;0,700;1,100;1,400;1,700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Waiting+for+the+Sunrise&display=block" rel="stylesheet">
+
+    {% block meta %}
+    {% endblock meta %}
+
+    {% block headextra %}
+    {% endblock headextra %}
+
+    {% comment %} base.js is always loaded {% endcomment %}
+    <script type="application/javascript" charset="UTF-8" src="{% static 'webpack/base.js' %}"></script>
+    {% comment %} This loads [appname].js {% endcomment %}
+    <script type="application/javascript" charset="UTF-8" src="{% static app_js_url %}"></script>
+    {% comment %} The boostrap code bridges django template context and javascript {% endcomment %}
+    <script type="application/javascript" charset="UTF-8">
+    {% include './bootstrap.html' %}
+    </script>
+</head>
+
+<body class="{{request_path_namespaces_css}} {% block body_class %}{% endblock %}"
+{% if user.is_authenticated %}
+    data-test-user-authenticated
+{% else %}
+    data-js-user-anonymous data-test-user-anonymous
+{% endif %}>
+    {% block body %}
+    {% block nav %}
+    {% endblock nav %}
+
+    {% block header %}
+    {% endblock header %}
+
+    {% block main %}
+    {% endblock main %}
+
+    {% block footer %}
+    {% endblock footer %}
+    {% endblock body %}
+</body>
+
+</html>

@@ -1,0 +1,7 @@
+[submodule "project/site/deps/django-client-framework-typescript"]
+	path = project/site/deps/repo/django-client-framework-typescript
+	url = https://github.com/cozybearca/django-client-framework-typescript.git
+
+[submodule "project/site/deps/django-client-framework"]
+	path = project/site/deps/repo/django-client-framework
+	url = https://github.com/cozybearca/django-client-framework.git

@@ -1,0 +1,144 @@
+@import "base/theme.scss";
+
+body {
+    // display: grid;
+    margin: 0;
+    font-family: "Roboto", "Noto Sans SC", -apple-system, BlinkMacSystemFont, Helvetica,
+        Tahoma, Arial, "PingFang SC", STXihei, "华文细黑", "Microsoft YaHei", "微软雅黑",
+        SimSun, "宋体", Heiti, "黑体", sans-serif;
+    color: $default-font-color;
+    font-size: 1rem;
+}
+
+li {
+    padding: 0;
+}
+
+ol,
+ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+a,
+a:active,
+a:visited {
+    &:not(.default-style) {
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+        outline: none;
+    }
+}
+
+input,
+textarea {
+    line-height: 150%; // safair has display bug if this value is < 150%
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 5px;
+    border: $input-border;
+    outline: none;
+    box-shadow: none;
+    &:focus {
+        box-shadow: $focused-input-box-shadow;
+        border-color: $focused-input-border-color;
+    }
+}
+
+input[type="submit"] {
+    cursor: pointer;
+}
+
+* {
+    margin: 0;
+    box-sizing: border-box;
+    line-height: 100%;
+    font-weight: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: bolder;
+}
+
+h1 {
+    font-size: 1.2rem;
+}
+
+h2 {
+    font-size: 1.1rem;
+}
+
+h3 {
+    font-size: 1rem;
+}
+
+h4 {
+    font-size: 0.9rem;
+}
+
+h5 {
+    font-size: 0.8rem;
+}
+
+hr {
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+}
+
+button {
+    box-sizing: content-box;
+    border-style: solid;
+    border-width: 1px;
+    cursor: pointer;
+    color: $button-font-gray;
+    background-color: $button-background-gray;
+    border-color: $button-border-gray;
+    border-radius: 3px;
+
+    &:hover {
+        background-color: $button-border-gray;
+    }
+
+    &:disabled {
+        color: $button-disabled-font-gray;
+        cursor: default;
+
+        &:hover {
+            background-color: $button-background-gray;
+        }
+    }
+}
+
+.selectize-control {
+    // 覆盖selectize自带css
+    display: grid;
+    align-items: center;
+
+    .selectize-dropdown,
+    .selectize-input,
+    .selectize-input input {
+        font-size: 0.9em;
+        border-style: solid;
+    }
+
+    .option,
+    .optgroup-header {
+        padding: 0.75rem 1rem;
+    }
+}
+
+[data-hidden] {
+    display: none;
+}

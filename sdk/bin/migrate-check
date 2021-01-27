@@ -1,0 +1,125 @@
+#!/usr/bin/env python3.8
+"""Django's command-line utility for administrative tasks."""
+import os
+import re
+from pathlib import Path
+from shutil import rmtree
+from subprocess import run
+
+import click
+
+
+def list_migrataion_names(appname):
+    """
+    Returns ["0001_initials", "0002_migrationname", ...]
+    """
+    from src import settings
+
+    common = settings.MIGRATION_DIR / appname
+    content = [
+        p.stem for p in common.iterdir() if p.suffix == ".py" and not p.is_symlink()
+    ]
+    migrations = [name for name in content if re.match(r"\d{4}_.*", name)]
+    if not migrations:
+        return None
+    migrations.sort()
+    return migrations
+
+
+def check_migration(modulepath):
+    import importlib
+
+    migration = importlib.import_module(modulepath)
+    # check migration orders
+    from django.db.migrations import (
+        AddField,
+        AlterField,
+        CreateModel,
+        DeleteModel,
+        RemoveField,
+        RenameField,
+        RenameModel,
+    )
+
+    valid_ordering = [
+        RenameModel,
+        CreateModel,
+        RenameField,
+        AlterField,
+        AddField,
+        RemoveField,
+        DeleteModel,
+    ]
+
+    operations = migration.Migration.operations
+    current = 0
+    for o in filter(lambda x: x.__class__ in valid_ordering, operations):
+        w = valid_ordering.index(o.__class__)
+        if w < current:
+            print("Found opertions in invalid order:")
+            print(f"\t{o}")
+            print(f"Valid order is: {', '.join([v.__name__ for v in valid_ordering])}")
+            exit(1)
+        else:
+            current = w
+
+    # check migration uniqueness
+    last_seen = {}
+
+    for o in filter(lambda x: x.__class__ in valid_ordering, operations):
+        newkeys = []
+        if o.__class__ is CreateModel:
+            model_name = o.name.lower()
+            for field_name, _ in o.fields:
+                newkeys.append((f"{model_name}.{field_name}", o))
+        elif o.__class__ is RenameModel:
+            model_name = o.new_name.lower()
+            newkeys.append((f"Rename {model_name}", o))
+        else:
+            newkeys.append((f"{o.model_name}.{o.name}", o))
+
+        for (nk, no) in newkeys:
+            last = last_seen.get(nk, None)
+            if last is not None:
+                print("Found duplicated operation:")
+                print(f"\t{no}")
+                print("Last seen was:")
+                print(f"\t{last}")
+                exit(1)
+            last_seen[nk] = o
+
+
+@click.command()
+@click.option(
+    "-a",
+    "appname",
+    type=str,
+    default="common",
+    help="App name of the migration, defaults to common",
+)
+@click.option(
+    "-i",
+    "index",
+    type=int,
+    required=False,
+    help="Index of the migration, for example, 1 for 0001_initial.py, defaults to the last migration",
+)
+def main(appname, index):
+    """
+    Checks migration file for potential issues.
+    """
+    migrations = list_migrataion_names(appname)
+    if index is None:
+        index = len(migrations)
+    if index < 1 or index > len(migrations):
+        exit(f"invalid migration index {index}")
+    migration_name = migrations[index - 1]
+    module = f"migrations.{appname}.{migration_name}"
+    check_migration(module)
+
+
+if __name__ == "__main__":
+    import django
+
+    django.setup()
+    main()

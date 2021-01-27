@@ -1,0 +1,5 @@
+#!/bin/bash
+filename=$1
+shift
+set -ex
+locust -f ${SITE_ROOT}/stress/$filename.py -H http://localhost:80 $@

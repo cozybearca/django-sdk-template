@@ -1,0 +1,5 @@
+#!/bin/bash
+set -xe
+cd ${SITE_ROOT}
+coverage run --rcfile="${SITE_ROOT}/.coveragerc" "runtest" "$@"
+coverage html -d "/tmp/coverage"

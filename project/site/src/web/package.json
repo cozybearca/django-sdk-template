@@ -1,0 +1,41 @@
+{
+  "name": "site",
+  "version": "1.0.0",
+  "dependencies": {
+    "knockout": "^3.5.1"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "^5.15.2",
+    "@types/jquery": "^3.3.31",
+    "@types/node": "^14.11.2",
+    "@types/selectize": "^0.12.34",
+    "@vkontakte/vk-qr": "^2.0.10",
+    "css-loader": "^3.2.0",
+    "django-client-framework": "../../deps/django-client-framework-typescript",
+    "drift-zoom": "^1.4.0",
+    "dropzone": "^5.5.1",
+    "file-loader": "^5.0.2",
+    "jquery": "^3.5.0",
+    "jquery-hoverintent": "^1.10.1",
+    "js-cookie": "^2.2.1",
+    "json-schema-to-typescript": "../../deps/json-schema-to-typescript",
+    "less": "^3.0.0",
+    "less-loader": "^5.0.0",
+    "mocha": "^6.2.2",
+    "node-sass": "^4.13.1",
+    "prettier": "^2.2.1",
+    "sass-loader": "^8.0.2",
+    "selectize": "=0.12.4",
+    "showdown": "^1.9.0",
+    "slick-carousel": "^1.8.1",
+    "sortablejs": "^1.10.0-rc3",
+    "source-map": "^0.7.3",
+    "style-loader": "^1.0.0",
+    "ts-loader": "^6.2.1",
+    "tsc": "^1.20150623.0",
+    "typescript": "^3.7.4",
+    "vue": "^2.6.12",
+    "webpack": "^4.41.4",
+    "webpack-cli": "^3.3.10"
+  }
+}

@@ -1,0 +1,17 @@
+#!/usr/bin/env python3.8
+
+import click
+
+
+@click.command()
+def main():
+    from src.reset import reset_site
+
+    reset_site()
+
+
+if __name__ == "__main__":
+    import django
+
+    django.setup()
+    main()

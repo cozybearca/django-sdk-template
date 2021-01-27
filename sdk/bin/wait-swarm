@@ -1,0 +1,10 @@
+#!/usr/bin/env python3.8
+from subprocess import run, DEVNULL
+import time
+
+while True:
+    proc = run(['docker', 'node', 'ls'], stderr=DEVNULL, stdout=DEVNULL)
+    if proc.returncode == 0:
+        break
+    else:
+        time.sleep(1)

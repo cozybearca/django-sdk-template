@@ -1,0 +1,5 @@
+project/site/src/web/static/** filter=lfs diff=lfs merge=lfs -text
+project/var/** filter=lfs diff=lfs merge=lfs -text
+project/db/jieba/** filter=lfs diff=lfs merge=lfs -text
+ios/Customer[[:space:]]Order/Assets.xcassets/** filter=lfs diff=lfs merge=lfs -text
+ios/**/Assets.xcassets/** filter=lfs diff=lfs merge=lfs -text

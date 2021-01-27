@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+
+import os
+import re
+from pathlib import Path
+from subprocess import run
+
+import click
+
+SDK_ROOT = Path(os.environ["SDK_ROOT"])
+SDK_PROJECT_DIR = Path(os.environ["SDK_PROJECT_DIR"])
+
+click.command()
+
+
+@click.command()
+@click.option("-w", "--write", is_flag=True)
+def main(write):
+    if write:
+        format_files()
+    else:
+        check_only()
+
+
+def get_source_files(extension):
+    return exclude_files(list(SDK_ROOT.glob(f"**/*.{extension}")))
+
+
+def exclude_files(files):
+    exclude_patterns = [
+        r".*/dist/.*",
+        r".*/node_modules/.*",
+        r".*/tmp/.*",
+        r".*/src/web/static/.*",
+    ]
+    ret = []
+    for file in files:
+        if not any([re.match(pattern, str(file)) for pattern in exclude_patterns]):
+            ret.append(file)
+    return ret
+
+
+def check_only():
+    run(
+        [
+            "flake8",
+            f"--config={SDK_ROOT}/setup.cfg",
+            "--show-source",
+            *get_source_files("py"),
+        ]
+    )
+    run(["black", "--check", *get_source_files("py")])
+    run(["prettier", "--check", *get_source_files("js"), *get_source_files("ts")])
+
+
+def format_files():
+    run(["black", *get_source_files("py")])
+    run(["prettier", "-w", *get_source_files("js"), *get_source_files("ts")])
+
+
+if __name__ == "__main__":
+    main()

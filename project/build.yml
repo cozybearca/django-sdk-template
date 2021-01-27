@@ -1,0 +1,38 @@
+version: "3.7"
+services:
+  base:
+    build: ${SDK_PROJECT_DIR}/base
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-base:${TAG?err}
+  nginx:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-nginx:${TAG?err}
+    build:
+      context: ${SDK_PROJECT_DIR}/nginx
+      args:
+        - TAG=${TAG?err}
+        - IMAGE_PREFIX=${IMAGE_PREFIX?err}
+        - PROJ_NAME=${PROJ_NAME:?err}
+  site:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-site:${TAG?err}
+    build:
+      context: ${SDK_PROJECT_DIR}/site
+      args:
+        - TAG=${TAG?err}
+        - IMAGE_PREFIX=${IMAGE_PREFIX?err}
+        - CONFIG=${CONFIG?err}
+        - PROJ_NAME=${PROJ_NAME:?err}
+  pgpool:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-pgpool:${TAG?err}
+    build:
+      context: ${SDK_PROJECT_DIR}/pgpool
+      args:
+        - TAG=${TAG?err}
+        - IMAGE_PREFIX=${IMAGE_PREFIX?err}
+        - PROJ_NAME=${PROJ_NAME:?err}
+  pg1:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-db:${TAG?err}
+    build:
+      context: ${SDK_PROJECT_DIR}/db
+      args:
+        - TAG=${TAG?err}
+        - IMAGE_PREFIX=${IMAGE_PREFIX?err}
+        - PROJ_NAME=${PROJ_NAME:?err}

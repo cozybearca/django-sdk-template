@@ -1,0 +1,12 @@
+{% extends 'base/document.html' %}
+{% block body_class %}{{ block.super }} login_view {% endblock body_class %}
+{% block header %}
+{% comment %} intentionally empty {% endcomment %}
+{% endblock header %}
+{% block nav %}
+{% comment %} intentionally empty {% endcomment %}
+{% endblock nav %}
+
+{% block body %}
+{% include 'base/parts/login.html' %}
+{% endblock body %}

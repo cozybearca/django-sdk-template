@@ -1,0 +1,5 @@
+#!/bin/bash
+source "$(dirname $0)/.bashrc"
+
+"$__dir__/sdkup"
+docker-compose -f "$HOST_SDK_ROOT/sdk/sdk.yml" exec sdk bash

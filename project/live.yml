@@ -1,0 +1,81 @@
+version: "3.7"
+services:
+  nginx:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-nginx:${TAG?err}
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.hostname != n3.cozybear.ca
+    networks:
+      ext-nginx:
+        aliases:
+          - ${PROJ_NAME:?err}-nginx
+    volumes:
+      - /data/nginx_certs:/certs
+
+  site:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-site:${TAG?err}
+    hostname: site
+    command: entrypoint --migrate --reset
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.hostname != n3.cozybear.ca
+    environment:
+      - TUNE_LIVE=1
+    volumes:
+      - /data/site_logs:/site_logs
+
+  pgpool:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-pgpool:${TAG?err}
+    hostname: pgpool # required by pg authentication
+    # no-replicas: we don't want 2 pgpool instances to handle fallback
+    deploy:
+      placement:
+        constraints:
+          - node.hostname != n3.cozybear.ca
+
+  pg1:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-db:${TAG?err}
+    hostname: pg1 # required by failover actions, and rep tool
+    command: entrypoint --nopg # required by failover recovery
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == n1.cozybear.ca
+    # todo: to make tools work from sibling containers, you can only use binding mount.
+    # named volumes does not work
+    volumes:
+      - pg1-data:/var/lib/postgresql/12/main
+      - pg1-wal:/pg_wal_archive
+
+  pg2:
+    hostname: pg2 # required by failover actions, and rep tool
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-db:${TAG?err}
+    command: entrypoint --nopg # required by failover recovery
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == n2.cozybear.ca
+    volumes:
+      - pg2-data:/var/lib/postgresql/12/main
+      - pg2-wal:/pg_wal_archive
+
+networks:
+  ext-nginx:
+    external: true
+
+networks:
+  ext-nginx:
+    external: true
+  sdknet:
+    name: ${PROJ_NAME:?err}_sdknet
+    external: true
+
+volumes:
+  pg1-data:
+    name: ${PROJ_NAME:?err}_pg1-data
+  pg1-wal:
+    name: ${PROJ_NAME:?err}_pg1-wal

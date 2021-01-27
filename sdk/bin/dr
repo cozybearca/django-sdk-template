@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+
+import os
+
+import click
+from tools import execute_docker_run
+from tools.service import Service
+
+PROJ_NAME = os.environ["PROJ_NAME"]
+
+
+@click.command()
+@click.argument("service_name")
+@click.option("-n", "--node", required=False, type=int)
+@click.option("-u", "--user", required=False, type=str)
+@click.option("--it/-T", "it", default=True)
+@click.argument("commands", nargs=-1)
+def main(service_name, node, user, it, commands):
+    service = Service.from_name(f"{PROJ_NAME}_{service_name}")
+    if not commands:
+        commands = ["bash"]
+    proc = execute_docker_run(
+        image=service.get_image_name(), user=user, cmd=commands, it=it
+    )
+    exit(proc.returncode)
+
+
+if __name__ == "__main__":
+    main()

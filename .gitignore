@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.code-workspace
+/project/share/
+/project/tmp/
+/project/var/
+/tmp/
+/share/
+node_modules/
+collectstatic/

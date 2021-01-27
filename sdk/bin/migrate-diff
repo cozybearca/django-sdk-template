@@ -1,0 +1,24 @@
+#!/usr/bin/env python3.8
+"""Django's command-line utility for administrative tasks."""
+from subprocess import run
+
+import click
+
+
+@click.command(context_settings={"ignore_unknown_options": True})
+@click.option("-A", "--apply", is_flag=True)
+@click.argument("options", nargs=-1)
+def main(apply, options):
+    """
+    Run django-admin makemigrations and forward options to it.\n
+    See migrate-make -- --help for makemigrations help.
+    """
+    if not options:
+        options = ["common"]
+    proc = run(["django-admin", "sqldiff", *options], capture_output=apply)
+    if apply:
+        run(["psql", "-U", "postgres", "-h", "pgpool", "-d", "site"], input=proc.stdout)
+
+
+if __name__ == "__main__":
+    main()

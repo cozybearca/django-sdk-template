@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+from logging import getLogger
+
+import click
+
+from tools import execute_docker_chown, execute_docker_cp, handle_get_info_for_service
+
+LOG = getLogger(__name__)
+
+
+def handle_tolocal(info, src, dest):
+    execute_docker_cp(info, f"{info['container_id']}:{src}", dest)
+
+
+def handle_toremote(info, src, dest):
+    execute_docker_cp(info, src, f"{info['container_id']}:{dest}")
+    execute_docker_chown(info, dest)
+
+
+@click.command()
+@click.option("-n", "--node", required=False, type=int)
+@click.option("-fl", "--from-local", required=False, type=str)
+@click.option("-fr", "--from-remote", required=False, type=str)
+@click.option("-tl", "--to-local", required=False, type=str)
+@click.option("-tr", "--to-remote", required=False, type=str)
+@click.argument("service")
+def main(service, from_local, from_remote, to_local, to_remote, node):
+    info = handle_get_info_for_service(service, node)
+    if all([from_remote, to_local]) and not any([from_local, to_remote]):
+        handle_tolocal(info, from_remote, to_local)
+    elif all([from_local, to_remote]) and not any([from_remote, to_local]):
+        handle_toremote(info, from_local, to_remote)
+    else:
+        exit(
+            "Invalid options: --from-local / --to-local / --from-remote / --to-remote combination"
+        )
+
+
+if __name__ == "__main__":
+    main()

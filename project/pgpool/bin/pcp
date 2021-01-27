@@ -1,0 +1,5 @@
+#!/bin/bash
+
+tool=$1
+shift
+pcp_$tool -w -h localhost -U postgres $@

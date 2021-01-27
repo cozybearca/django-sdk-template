@@ -1,0 +1,10 @@
+version: "3.7"
+services:
+  redirect:
+    image: bobrik/socat
+    command: TCP-LISTEN:2375,reuseaddr,fork UNIX-CONNECT:/var/run/docker.sock
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 2375:2375

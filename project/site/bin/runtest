@@ -1,0 +1,314 @@
+#!/usr/bin/env python3.8
+import logging
+import os
+import sys
+from logging import getLogger
+from multiprocessing import cpu_count
+from pathlib import Path
+
+import click
+import lockfile
+import requests
+import src.logging
+from daemon import DaemonContext
+
+SITE_ROOT = Path(os.environ["SITE_ROOT"])
+RUNTEST_APP_TOKEN = "686edd0dafb4cc83c1f7c089039c87059263fbfc"
+
+src.logging.configure_logging()
+LOG = getLogger(__name__)
+
+
+def send_request(method, url, json):
+    LOG.debug(f"{method.__name__} {url} {json}")
+    resp = method(
+        url,
+        json=json,
+        headers={"Authorization": f"Token {RUNTEST_APP_TOKEN}"},
+    )
+    if resp.status_code not in range(200, 300):
+        raise Exception(f"Failed to send HTTP request to {url}. Response: {resp.text}")
+    else:
+        # LOG.debug(f"{resp.json()}")
+        return resp
+
+
+def check_stop_before_test_case(daemon_url, logfile=None):
+    from src.common import models as m
+
+    testdaemon = send_request(requests.get, daemon_url, {}).json()
+    if testdaemon.get("stop", False):
+        msg = "Detected TestDaemon stop = true in runtest before running test case. Aborting..."
+        LOG.info(msg)
+        send_request(
+            requests.patch,
+            daemon_url,
+            {
+                "status": m.TestDaemon.Status.FAILED,
+                "logs": logfile.read_text() if logfile else msg,
+            },
+        )
+        exit("Aborted.")
+
+
+def setup_daemon(daemon_url, testdaemon_id):
+    from src.common import models as m
+
+    os.environ.update(
+        {
+            "TESTDAEMON_ID": str(testdaemon_id),
+            "TEST_DB": f"testdaemon_{testdaemon_id}",
+        }
+    )
+    testdaemon = send_request(requests.get, daemon_url, {}).json()
+
+    log_file = Path(testdaemon["log_file"])
+    LOG.info("Demonizing...")
+    LOG.info(f"Logs will now appear in {log_file}")
+
+    pid_file = Path(testdaemon["pid_file"])
+    pid_file.parent.mkdir(parents=True, exist_ok=True)
+    daemon_ctx = DaemonContext(pidfile=lockfile.FileLock(pid_file))
+    daemon_ctx.open()
+
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    LOG.addHandler(logging.FileHandler(log_file, mode="w"))
+    send_request(
+        requests.patch,
+        daemon_url,
+        {"status": m.TestDaemon.Status.DAEMONIZED, "runtest_pid": os.getpid()},
+    )
+    LOG.info("Daemonized.")
+
+    return log_file
+
+
+def logged_run(cmd, **kwargs):
+    from subprocess import PIPE, STDOUT, Popen
+
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    kwargs.update({"stdout": PIPE, "stderr": STDOUT, "bufsize": 0, "env": env})
+    LOG.debug(f"RUN {cmd} {kwargs}")
+    with Popen(cmd, **kwargs) as proc:
+        if LOG.isEnabledFor(logging.INFO):
+            for ln in proc.stdout:
+                LOG.info(ln.rstrip().decode())
+        else:
+            while True:
+                sys.stdout.buffer.write(proc.stdout.read(1))
+                sys.stdout.buffer.flush()
+                if proc.poll() is not None:
+                    sys.stdout.buffer.write(proc.stdout.read())
+                    sys.stdout.buffer.flush()
+                    break
+    LOG.debug(f"EXIT {proc.returncode}")
+    return proc
+
+
+def populate_py_init_files(directory):
+    init = directory / "__init__.py"
+    if not init.exists():
+        init.touch()
+    for item in directory.iterdir():
+        if item.is_dir():
+            populate_py_init_files(item)
+
+
+def find_test_modules(pattern, file, include_ext):
+    populate_py_init_files(SITE_ROOT / "tests")
+
+    if not pattern:
+        pattern = ["**/test_*.py"]
+    if file:
+        pattern = [f"**/{file}.py"]
+    test_modules = []
+    for p in pattern:
+        if p.endswith(".py"):
+            test_files = (SITE_ROOT / "tests").glob(p)
+            modules_match = []
+            for f in test_files:
+                relpath = f.relative_to(SITE_ROOT)
+                if not include_ext and relpath.match("ext/**"):
+                    continue
+                module = str(relpath.with_suffix("")).replace("/", ".")
+                modules_match.append(module)
+            if modules_match:
+                test_modules += modules_match
+            else:
+                exit(f'runtest: no file matched the pattern "{p}"')
+        else:
+            test_modules.append(p)
+    return test_modules
+
+
+@click.command()
+@click.argument("pattern", nargs=-1)
+@click.option("-p", "--parallel", is_flag=True, default=False)
+@click.option("--parallel-N", "parallel_n", type=int)
+@click.option("--list", "list_tests", is_flag=True, default=False)
+@click.option("-v", "--verbose", is_flag=True, default=False)
+@click.option("--tail", is_flag=True, default=False)
+@click.option("--debug", is_flag=True, default=False)
+@click.option("-b", "--bail", is_flag=True, default=False)
+@click.option("--debug-mode", is_flag=True, default=False)
+@click.option("--nomock", is_flag=True, default=False)
+@click.option("-f", "--file", type=str)
+@click.option("-t", "--timeout", type=int)
+@click.option("--nomigrations", is_flag=True, default=False)
+@click.option("--debugpy", is_flag=True, default=False)
+@click.option("--log-filter", type=str, default="")
+@click.option(
+    "--daemon",
+    "testdaemon_id",
+    type=int,
+    help="Daemonize and send status as TestDaemon to a URL.",
+)
+@click.option("--db", "testdb", help="specify test db name")
+def main(
+    list_tests,
+    pattern,
+    parallel,
+    parallel_n,
+    verbose,
+    tail,
+    debug,
+    bail,
+    debug_mode,
+    nomock,
+    file,
+    timeout,
+    testdaemon_id,
+    nomigrations,
+    testdb,
+    debugpy,
+    log_filter,
+):
+
+    from django.shortcuts import reverse
+    from src.common import models as m
+
+    log_file = None
+    test_passed = True
+    proc = None
+    host = "http://localhost:8000"
+    testdaemon_url = None
+
+    if testdaemon_id:
+        testdaemon_url = host + reverse(
+            "api:v1:model_object",
+            kwargs={"model": "testdaemon", "pk": testdaemon_id},
+        )
+
+    if tail:
+        LOG.setLevel(logging.DEBUG)
+    else:
+        LOG.setLevel(logging.INFO)
+
+    try:
+        if testdaemon_id:
+            log_file = setup_daemon(testdaemon_url, testdaemon_id)
+
+        test_modules = find_test_modules(
+            pattern, file, include_ext=testdaemon_id is not None
+        )
+        if list_tests:
+            for mod in test_modules:
+                print(mod)
+            exit(0)
+        for module in test_modules:
+            LOG.info(module)
+        args = ["django-admin", "test", "--noinput"]
+
+        os.environ.update(
+            {
+                "TUNE_TEST": "1",
+                "LOG_CONSOLE_FILTER": "__main__, " + log_filter,
+            }
+        )
+
+        if testdb:
+            os.environ["TEST_DB"] = testdb
+        if parallel_n:
+            parallel = True
+        if parallel:
+            if parallel_n:
+                args += ["--parallel", str(parallel_n)]
+            else:
+                args += ["--parallel", str(cpu_count())]
+        if verbose or tail:
+            os.environ["VERBOSE_TEST"] = "1"
+            args += ["-v2"]
+        else:
+            logging.disable(logging.CRITICAL)
+        if timeout:
+            os.environ["WAITFOR_TIMEOUT"] = str(timeout)
+        if tail:
+            os.environ["TAIL_VERBOSE_TEST"] = "1"
+        if bail:
+            args += ["--failfast"]
+        if debug:
+            os.environ["CHROME_REMOTE_DEBUG"] = "1"
+        if nomock:
+            os.environ["NO_MOCK"] = "1"
+        if debug_mode:
+            args += ["--debug-mode"]
+        if nomigrations:
+            args += ["--nomigrations"]
+        args += test_modules
+
+        if debugpy:
+            args = [
+                "python3",
+                "-m",
+                "debugpy",
+                "--listen",
+                "0.0.0.0:5678",
+                "--wait-for-client",
+            ] + args
+
+        # migration could cause db to stop, wait again
+        proc = logged_run(["wait-for-it", "-t", "60", "pgpool:5432"])
+        if proc.returncode != 0:
+            LOG.info("wait-for-it timed out.")
+            exit(proc.returncode)
+
+        if testdaemon_url:
+            check_stop_before_test_case(testdaemon_url, logfile=log_file)
+            send_request(
+                requests.patch, testdaemon_url, {"status": m.TestDaemon.Status.RUNNING}
+            )
+
+        proc = logged_run(args)
+        LOG.info(f"runtest existed with {proc.returncode}")
+        if proc.returncode != 0:
+            exit("runtest failed.")
+
+    except BaseException:
+        test_passed = False
+        raise
+    finally:
+        if testdaemon_url:
+            if proc:
+                test_passed &= proc.returncode in [0, -10]
+            if log_file:
+                logs = log_file.read_text()
+            else:
+                logs = "log_file does not exist."
+            send_request(
+                requests.patch,
+                testdaemon_url,
+                {
+                    "logs": logs,
+                    "status": m.TestDaemon.Status.PASSED
+                    if test_passed
+                    else m.TestDaemon.Status.FAILED,
+                },
+            )
+
+
+if __name__ == "__main__":
+    import django
+
+    django.setup()
+    main()

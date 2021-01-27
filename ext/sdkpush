@@ -1,0 +1,5 @@
+#!/bin/bash
+source "$(dirname $0)/.bashrc"
+
+docker login docker.pkg.github.com -u $GIT_USER -p $GIT_REGISTRY_TOKEN &> /dev/null
+docker-compose -f "$HOST_SDK_ROOT/sdk/sdk.yml" push

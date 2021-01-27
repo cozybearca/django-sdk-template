@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+
+import os
+import time
+from datetime import datetime
+from subprocess import PIPE, STDOUT, Popen
+
+import click
+from tools import handle_get_info_for_service, run
+
+PROJ_NAME = os.environ["PROJ_NAME"]
+
+
+def hotfix_docker_service_logs_hangs(*runargs):
+    print("Collecting logs... ", end="")
+    tick = 0
+    nlines = 0
+    with Popen(runargs, text=True, stdout=PIPE, stderr=STDOUT) as proc:
+        os.set_blocking(proc.stdout.fileno(), False)
+        while True:
+            if lines := proc.stdout.readlines():
+                tick = 0
+                nlines += len(lines)
+                yield from lines
+            else:
+                if tick > 0:
+                    proc.kill()
+                    break
+                else:
+                    tick += 1
+                    time.sleep(1)
+    print(f"{nlines} line(s) collected.")
+
+
+def show_sorted_docker_service_logs(service, show_timestamps, tail):
+    lines = list(
+        hotfix_docker_service_logs_hangs(
+            "docker",
+            "service",
+            "logs",
+            "--tail",
+            str(tail),
+            "-t",
+            f"{PROJ_NAME}_{service}",
+        )
+    )
+    unprocessed_lines = []
+    timestamped_lines = []
+    for ln in lines:
+        split = ln.split()
+        timestamp_str = split[0] if split else ""
+        try:
+            dt = datetime.strptime(timestamp_str[0:-4], r"%Y-%m-%dT%H:%M:%S.%f")
+        except ValueError:
+            # input does not start with an timestemp
+            if timestamped_lines:
+                ts, prevln = timestamped_lines[-1]
+                timestamped_lines[-1] = (ts, prevln + ln)
+            else:
+                unprocessed_lines.append(ln)
+        else:
+            timestamped_lines.append((dt, ln))
+
+    timestamp_len = 31
+
+    timestamped_lines.sort(key=lambda x: x[0])
+
+    print("".join(unprocessed_lines))
+    if show_timestamps:
+        print("".join([ln for _, ln in timestamped_lines]))
+    else:
+        print("".join([ln[timestamp_len:] for _, ln in timestamped_lines]))
+
+
+@click.command()
+@click.argument("service")
+@click.option(
+    "-n",
+    "--node",
+    required=False,
+    type=int,
+    help="Specify node number if there are multiple instances running.",
+)
+@click.option(
+    "-s",
+    "--use-docker-service",
+    is_flag=True,
+    help=f"Use docker service logs --tail=N -f {PROJ_NAME}_{{service}}",
+)
+@click.option(
+    "-T", "--show-timestamps", is_flag=True, help="Use docker service logs --timestamps"
+)
+@click.option(
+    "-t", "--tail", type=int, default=100, help="Recent number of lines to output."
+)
+def main(service, use_docker_service, node, tail, show_timestamps):
+    if use_docker_service:
+        show_sorted_docker_service_logs(service, show_timestamps, tail)
+        proc = run(
+            [
+                "docker",
+                "service",
+                "logs",
+                "--tail",
+                "0",  # logs are printed by show_sorted_docker_service_logs
+                "--follow",
+                f"{PROJ_NAME}_{service}",
+            ]
+        )
+    else:
+        info = handle_get_info_for_service(service, node)
+        proc = run(
+            [
+                "docker",
+                "-H",
+                info["node_ip"],
+                "logs",
+                "--tail",
+                str(tail),
+                "-f",
+                info["container_id"],
+            ]
+        )
+    exit(proc.returncode)
+
+
+if __name__ == "__main__":
+    main()

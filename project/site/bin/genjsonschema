@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+
+import json
+import os
+import shutil
+from pathlib import Path
+
+import click
+from deps.drf_jsonschema.convert import model_to_jsonschema
+
+
+@click.command()
+def main():
+    import django
+
+    django.setup()
+    from django_client_framework.serializers import generate_jsonschema
+
+    dest_dir = "/tmp/json_schema"
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    dest_dir.mkdir(parents=True)
+
+    for model in generate_jsonschema.get_models():
+        schema = model_to_jsonschema(model)
+        dest_file = dest_dir / f"{model.__name__}.json"
+        dump = json.dumps(schema, ensure_ascii=False, indent=2)
+        dest_file.write_text(dump)
+        print(dest_file)
+
+
+if __name__ == "__main__":
+    main()

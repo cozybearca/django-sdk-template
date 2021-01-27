@@ -1,0 +1,4 @@
+#!/bin/bash
+source "$(dirname $0)/.bashrc"
+
+docker-compose -f "$HOST_SDK_ROOT/sdk/sdk.yml" down

@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+import os
+from subprocess import DEVNULL
+
+import click
+from tools import run
+
+PROJ_NAME = os.environ["PROJ_NAME"]
+
+
+@click.command()
+@click.option("-c", "--config", required=True, type=click.Choice(["ci", "dev", "live"]))
+@click.option("-t", "--tag", required=True)
+@click.option("--rm", is_flag=True)
+@click.option("--build", is_flag=True)
+@click.option("--no-cache", is_flag=True)
+@click.option("--pull", is_flag=True)
+@click.option(
+    "--tunelive",
+    is_flag=True,
+    help="Deploy on the live server. Requires --config=live and --pull",
+)
+def main(build, no_cache, config, tag, rm, pull, tunelive):
+    SDK_PROJECT_DIR = os.environ["SDK_PROJECT_DIR"]
+    env = os.environ.copy()
+    env["TAG"] = tag
+    if config == "live":
+        if not pull:
+            exit("--config=live requires --pull. See --help.")
+        ln = input(
+            "--config=live should only be used on the live server.\nContinue? y/[n]"
+        )
+        if "y" not in ln:
+            exit("Aborted.")
+    # when using bind mount docker swarm expect the source directories to exists on host
+    if not pull:
+        env.update({"IMAGE_PREFIX": ""})
+    if build and pull:
+        exit("--build and --pull are muturally exclusive flags")
+    if pull:
+        run(["login"], env=env)
+        run(
+            ["docker-compose", "-f", f"{SDK_PROJECT_DIR}/build.yml", "pull"],
+            env=env,
+        )
+    if build:
+        cmd = ["build", "-t", tag, "-c", config]
+        if no_cache:
+            cmd += ["--no-cache"]
+        run(cmd, env=env)
+    if rm:
+        run(["docker", "stack", "rm", PROJ_NAME])
+        while (
+            run(
+                ["docker", "inspect", f"{PROJ_NAME}_default"],
+                stdout=DEVNULL,
+                stderr=DEVNULL,
+                exit_on_error=False,
+            ).returncode
+            == 0
+        ):
+            run(["sleep", "1"])
+    run(
+        ["docker", "stack", "deploy", "-c", f"{SDK_PROJECT_DIR}/{config}.yml"]
+        + ([] if build else ["--with-registry-auth"])
+        + [PROJ_NAME],
+        env=env,
+    )
+
+
+main()

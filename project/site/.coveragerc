@@ -1,0 +1,11 @@
+[run]
+data_file=/tmp/.coverage
+omit=*/__init__.py
+source=${SITE_ROOT?}/src
+relative_files=True
+branch=True
+
+[report]
+exclude_lines =
+    raise NotImplementedError
+    raise AssertionError

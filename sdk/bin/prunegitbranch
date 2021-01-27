@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+
+from subprocess import run
+
+import click
+
+
+@click.command()
+def main():
+    run(["git", "fetch", "--prune"])
+    returncode = run("git branch -v | grep --color 'gone'", shell=True).returncode
+    if returncode != 0:
+        exit("Nothing to do.")
+    input("Continue? [Y]/n ")
+    run(
+        "git branch -v | grep 'gone'  | awk '{ print $1 }' | xargs git branch -D",
+        shell=True,
+    )
+
+
+if __name__ == "__main__":
+    main()

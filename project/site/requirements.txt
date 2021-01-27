@@ -1,0 +1,50 @@
+click # command line argument parser
+coverage>=5.0.3
+django-extensions
+django-guardian>=1.5
+Django>=3,<4
+djangorestframework>=3.11
+django-test-without-migrations
+google-search-results # search google result for ML
+googlemaps
+hanziconv # chinese char conversion
+ipromise # provides @overrides decorator
+matplotlib # data science
+nexmo # sms service
+openpyxl # data science
+pandas # data science
+Pillow # image conversion
+psycopg2-binary>=2.7.7,<3
+PyYAML # data science
+scikit-learn # data science
+stripe # 3rd party payment service
+tblib # django parallel test dependency
+django-currentuser # get current user in django model
+google-auth # google login backend
+deprecation # provides @deprecate decorator
+requests # make http requests
+requests-mock # testing tool
+uwsgi>=2 # live server wsgi
+apns2 # apple notification services
+python-daemon # daemonize process
+filelock # unix file lock
+logging_tree # debug python logging config
+twilio # sms service
+jsonschema # generate model classes in typescript
+
+# profiling tools
+django-debug-toolbar
+django-debug-toolbar-template-timings
+# https://github.com/node13h/django-debug-toolbar-template-profiler
+django-debug-toolbar-template-profiler
+
+# stress test tools
+locust
+django-silk
+uwsgitop
+
+# dev tools
+ipython
+jedi==0.17.2 # hotfix https://github.com/ipython/ipython/issues/12740
+xlsxwriter
+treepoem

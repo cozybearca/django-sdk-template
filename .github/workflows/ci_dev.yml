@@ -1,0 +1,79 @@
+name: dev
+
+on:
+  push:
+    branches-ignore:
+      - release
+      - staging
+      - "revert-*-staging"
+      - "**/revert-*-staging"
+  repository_dispatch:
+    types: trigger_dev_ci
+
+jobs:
+  ci_dev:
+    runs-on: self-hosted
+    timeout-minutes: 30
+    steps:
+      - name: Display runner status
+        run: |
+          echo "hostname -f: $(hostname -f)"
+          echo "whoami: $(whoami)"
+          echo "pwd: $(pwd)"
+
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.4.1
+        with:
+          access_token: ${{ github.token }}
+
+      - name: Change work directory permission
+        run: sudo chown -R $(whoami):$(whoami) .
+
+      - name: Run git checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+          clean: true
+          submodules: recursive
+
+      - name: Create PR
+        uses: repo-sync/pull-request@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          destination_branch: staging
+
+      - name: Start snackerloo-sdk container
+        run: |
+          source ext/.bashrc
+          sudo ext/sdkpull
+          sudo -E docker-compose -f sdk/ci.yml up -d
+          sudo ext/runinsdk -f sdk/ci.yml <<< "
+            docker system prune --volumes --force
+            wait-swarm
+          "
+
+      - name: Run style check
+        run: |
+          sudo ext/runinsdk -f sdk/ci.yml <<< "
+            stylecheck
+          "
+
+      - name: Build project in snackerloo-sdk
+        run: |
+          sudo ext/runinsdk -f sdk/ci.yml <<< "
+            deploy --build --rm --config=ci --tag=dev-${GITHUB_SHA::7} ||\
+            ( docker system prune --all -f --volumes &&\
+              deploy --build --no-cache --rm --config=ci --tag=dev-${GITHUB_SHA::7} )
+          "
+
+      - name: Run tests
+        run: |
+          sudo ext/runinsdk -f sdk/ci.yml <<< "
+            dx site -T -- runtest --parallel --verbose --bail --nomock
+          "
+
+      - uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: screenshots
+          path: tmp/screenshots

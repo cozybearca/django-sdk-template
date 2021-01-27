@@ -1,0 +1,38 @@
+{% comment %} This code bridges django template context and javascript {% endcomment %}
+
+{% for en in enum_list %}
+{% autoescape off %}
+window["{{en.0}}"] = {
+    value: "{{en.1}}",
+    label: "{{en.2}}",
+};
+{% endautoescape %}
+{% endfor %}
+{% autoescape off %}
+window["is_authenticated"] = {% if user.logged_in %} true {% else %} false {% endif %};
+window["DISABLE_GOOGLE_LOGIN"] = {% if DISABLE_GOOGLE_LOGIN %} true {% else %} false {% endif %};
+window["current_user"] = {% if user.logged_in %} {{user.id}} {% else %} undefined {% endif %};
+
+base.$(() => {
+    let current_app = window
+    let current_app_names = []
+    for (const app_name of {{request_path_namespaces}}) {
+        current_app = current_app[app_name]
+        current_app_names.push(app_name)
+        const module_name = current_app_names.join('.')
+        console.log('loading', module_name)
+        if (current_app) {
+            if (current_app.init) {
+                current_app.init()
+            } else {
+                console.warn(`${module_name} has not exported an init function`)
+            }
+        } else {
+            console.warn('not found:', module_name)
+            break
+        }
+    }
+})
+
+base.init()
+{% endautoescape %}

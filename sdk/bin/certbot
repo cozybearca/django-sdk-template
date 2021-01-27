@@ -1,0 +1,7 @@
+#!/bin/bash
+
+docker run -it --rm --name certbot \
+    -v "$HOST_SDK_ROOT/certbot/etc/letsencrypt:/etc/letsencrypt" \
+    --network="priv-${PROJ_NAME}" \
+    --network-alias="certbot" \
+    certbot/certbot $@

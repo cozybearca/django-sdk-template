@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+
+
+import os
+from typing import Dict, Set
+
+import click
+from tools.container import Container
+from tools.service import Service
+from tools.volume import Mount, Volume
+
+PROJ_NAME = os.environ["PROJ_NAME"]
+
+
+@click.option("-v", "--verbose", is_flag=True)
+@click.command()
+def main(verbose):
+    volumes = Volume.all()
+    volume_names = {v.name for v in volumes}
+    volume_services: Dict[str, Set[(Service, Mount)]] = {v.name: set() for v in volumes}
+    for service in Service.all():
+        for m in service.get_mounts():
+            if m.type == "volume":
+                assert m.source in volume_names
+                volume_services[m.source].add((service, m))
+
+    volume_containers: Dict[str, Set[(Container, Mount)]] = {
+        v.name: set() for v in volumes
+    }
+    for container in Container.all_local():
+        for m in container.get_mounts():
+            if m.type == "volume":
+                assert m.source in volume_names
+                volume_containers[m.source].add((container, m))
+
+    print("Volumes:")
+    for v in volumes:
+        service_names = [
+            f"{s.get_name()}:{m.target}" for s, m in volume_services[v.name]
+        ]
+        container_names = [
+            f"{c.get_name()}:{m.target}" for c, m in volume_containers[v.name]
+        ]
+        print(
+            f"{v.name:32.32} {v.get_size():10.10} services: {service_names} local containers: {container_names}"
+        )
+
+
+if __name__ == "__main__":
+    main()

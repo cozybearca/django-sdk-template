@@ -1,0 +1,15 @@
+tabWidth: 4
+trailingComma: "es5"
+semi: false
+printWidth: 88
+overrides:
+  - files:
+      - "*.yml"
+      - "*.yaml"
+    options:
+      tabWidth: 2
+
+  - files:
+      - "*.json"
+    options:
+      tabWidth: 2

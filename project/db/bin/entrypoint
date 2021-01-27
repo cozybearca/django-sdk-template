@@ -1,0 +1,43 @@
+#!/usr/bin/env python3.8
+
+from pathlib import Path
+from subprocess import run
+
+import click
+
+
+@click.command()
+@click.option("--nopg", is_flag=True, type=bool)
+def main(nopg):
+    # volume permissions must be set here
+    for ln in [
+        "chown -R postgres:postgres /pg_wal_archive",
+        "chmod -R 0750 /pg_wal_archive",
+        "chown -R postgres:postgres /etc/postgresql/12/main",
+        "chown -R postgres:postgres /var/lib/postgresql/12/main",
+        "chown -R postgres:postgres /pg_logs",
+    ]:
+        run(f"sudo {ln}", check=True, shell=True)
+    run(["sudo", "service", "ssh", "start"], check=True)
+    if list(Path("/var/lib/postgresql/12/main").iterdir()) == []:
+        run(["initdb"], check=True)
+    if not nopg:
+        run(
+            [
+                "pg_ctl",
+                "start",
+                "-o",
+                "--config-file=/etc/postgresql/12/main/postgresql.conf",
+                "-D",
+                "/var/lib/postgresql/12/main",
+            ],
+            check=True,
+        )
+    logfile = Path("/pg_logs/postgresql.log")
+    logfile.parent.mkdir(exist_ok=True)
+    logfile.touch(exist_ok=True)
+    run(["tail", "-n", "10", "-f", "/pg_logs/postgresql.log"])
+
+
+if __name__ == "__main__":
+    main()

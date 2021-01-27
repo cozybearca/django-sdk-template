@@ -1,0 +1,8 @@
+#!/bin/bash
+set -ex
+
+timestemp="$(date '+%F_%H-%M')"
+dumpfile="pgdump-site-$timestemp"
+dx pgpool -- pg_dump -U postgres -h db -w --format=custom --file "/tmp/$dumpfile" site
+dcp pgpool -fr "/tmp/$dumpfile" -tl "./$dumpfile"
+dx pgpool -- psql -v ON_ERROR_STOP=1 -P pager=off --single-transaction -h db -d site -U postgres -c 'select * from django_migrations order by app, applied DESC' > "./$dumpfile.migration.log"

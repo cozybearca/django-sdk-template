@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+
+from pathlib import Path
+from subprocess import run
+
+import click
+
+
+@click.command()
+@click.option("--dev", is_flag=True)
+def main(dev):
+    link = Path("/etc/pgpool2/pgpool.conf")
+    link.unlink(missing_ok=True)
+    if dev:
+        link.symlink_to("/etc/pgpool2/pgpool.dev.conf")
+    else:
+        link.symlink_to("/etc/pgpool2/pgpool.live.conf")
+    run(["pgpool", "-n"])
+
+
+if __name__ == "__main__":
+    main()

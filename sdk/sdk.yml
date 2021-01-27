@@ -1,0 +1,35 @@
+version: "3.7"
+services:
+  sdk:
+    build:
+      context: ..
+      dockerfile: sdk/Dockerfile
+      args:
+        - PROJ_NAME=${PROJ_NAME:?err}
+        - HOST_PORT_SPACE=${HOST_PORT_SPACE:?err}
+    image: ${SDK_IMAGE_PREFIX:?err}${PROJ_NAME:?err}-sdk:${SDK_TAG:?err}
+    working_dir: /${PROJ_NAME:?err}-sdk
+    container_name: ${PROJ_NAME:?err}-sdk
+    hostname: ${PROJ_NAME:?err}-sdk
+    restart: always
+    ports:
+      - "${HOST_PORT_SPACE:?err}8000:8000" # dev server
+      - "${HOST_PORT_SPACE:?err}8081-${HOST_PORT_SPACE:?err}8088:8081-8088" # static live server test cases
+      - "${HOST_PORT_SPACE:?err}9222:9222" # chrome debug port
+      - "${HOST_PORT_SPACE:?err}8089:8089" # locust
+      - "${HOST_PORT_SPACE:?err}5678:5678" # debugpy
+    environment:
+      - HOST_SDK_ROOT=${HOST_SDK_ROOT:?err}
+    volumes:
+      - ../:/${PROJ_NAME:?err}-sdk # required
+      - ${HOME:?err}/.ssh/:/root/.ssh:ro # required
+      - ./bin:/opt/bin # required
+      - ./.bashrc:/root/.bashrc # required
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      sdknet:
+
+networks:
+  sdknet:
+    driver: overlay
+    name: ${PROJ_NAME:?err}_sdknet

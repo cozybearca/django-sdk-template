@@ -1,0 +1,22 @@
+# This file is used by gitaction runner to build ${PROJ_NAME:?err}-site and
+# ${PROJ_NAME:?err}-db images. This file is referred by .github/workflows/ci.yml
+
+version: "3.7"
+services:
+  nginx:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-nginx:${TAG?err}
+
+  site:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-site:${TAG?err}
+    hostname: dev
+    volumes:
+      - type: tmpfs
+        target: /dev/shm
+      - ${HOST_SDK_ROOT:?err}/tmp/screenshots:/root/share/screenshots:cached
+
+  pgpool:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-pgpool:${TAG?err}
+    command: entrypoint --dev
+
+  pg1:
+    image: ${IMAGE_PREFIX?err}${PROJ_NAME:?err}-db:${TAG?err}

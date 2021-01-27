@@ -1,0 +1,7 @@
+#/bin/bash
+
+rm -r /tmp/vscpack
+sudo -u sdk -- cp -r $SDK_ROOT/sdk/vscpack /tmp/vscpack
+cd /tmp/vscpack
+sudo -u sdk -- vsce package
+mv *.vsix /root/

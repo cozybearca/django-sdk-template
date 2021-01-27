@@ -1,0 +1,7 @@
+#!/bin/bash
+
+psql <<EOF
+CREATE DATABASE site WITH ENCODING 'UTF-8' OWNER "postgres";
+GRANT ALL PRIVILEGES ON DATABASE site TO postgres;
+create extension pg_jieba;
+EOF

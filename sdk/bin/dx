@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+
+import click
+from tools import execute_docker_exec, handle_get_info_for_service
+
+
+@click.command()
+@click.argument("service")
+@click.option("-n", "--node", required=False, type=int)
+@click.option("-u", "--user", required=False, type=str)
+@click.option("--it/-T", "it", default=True)
+@click.argument("commands", nargs=-1)
+def main(service, node, user, it, commands):
+    info = handle_get_info_for_service(service, node)
+    if not commands:
+        commands = ["bash"]
+    print(flush=True)
+    proc = execute_docker_exec(info, user=user, cmd=commands, it=it)
+    exit(proc.returncode)
+
+
+if __name__ == "__main__":
+    main()

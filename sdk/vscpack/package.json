@@ -1,0 +1,28 @@
+{
+    "name": "sdkpack",
+    "displayName": "sdkpack",
+    "description": "",
+    "publisher": "ylilarry",
+    "version": "0.0.1",
+    "repository": "###",
+    "engines": {
+        "vscode": "^1.50.0"
+    },
+    "categories": [
+        "Extension Packs"
+    ],
+    "extensionPack": [
+        "redhat.vscode-yaml",
+        "ms-python.python",
+        "batisteo.vscode-django",
+        "mikebovenlander.formate",
+        "mrorz.language-gettext",
+        "stkb.rewrap",
+        "esbenp.prettier-vscode",
+        "dlech.chmod",
+        "fabiospampinato.vscode-diff",
+        "bcanzanella.openmatchingfiles",
+        "geddski.macros",
+        "ms-python.vscode-pylance"
+    ]
+}

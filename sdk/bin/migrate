@@ -1,0 +1,182 @@
+#!/usr/bin/env python3.8
+import re
+from logging import getLogger
+
+import click
+from django.conf import settings
+
+LOG = getLogger(__name__)
+
+
+def run(*args, **kwargs):
+    import subprocess
+
+    LOG.debug(f"{args=}, {kwargs=}")
+    return subprocess.run(*args, **kwargs)
+
+
+def input_confirm(msg, default_yes=False):
+    """
+    Returns whether should proceed
+    """
+    if default_yes:
+        default_text = "[Y]/n"
+    else:
+        default_text = "[N]/y"
+    user_input = input(f"{msg}. {default_text}").lower().strip()
+    if default_yes:
+        if user_input == "n":
+            return False
+        elif user_input == "y" or user_input == "":
+            return True
+    else:
+        if user_input == "n" or user_input == "":
+            return False
+        if user_input == "y":
+            return True
+    return False
+
+
+def list_migrations():
+    """
+    Returns just the name part, without .py. For instance, 0001_initial
+    """
+    common = settings.MIGRATION_DIR / "common"
+    content = [p.stem for p in common.iterdir() if p.suffix == ".py"]
+    migrations = [name for name in content if re.match(r"\d{4}_.*", name)]
+    migrations.sort()
+    return migrations
+
+
+@click.group()
+@click.pass_context
+def migrate(ctx):
+    pass
+
+
+@migrate.command(
+    name="diff",
+    context_settings={"ignore_unknown_options": True},
+)
+@click.argument("options", nargs=-1)
+@click.pass_context
+def migrate_diff(ctx, options):
+    """
+    Show difference between the model files and the current DB schema.
+    """
+    run(["migrate-diff", *options])
+
+
+@migrate.command(
+    name="check",
+    context_settings={"ignore_unknown_options": True},
+)
+@click.argument("options", nargs=-1)
+@click.pass_context
+def migrate_check(ctx, options):
+    """
+    Check migration file for potential issues.
+    """
+    run(["migrate-check", *options])
+
+
+@migrate.command(name="revert")
+@click.pass_context
+def migrate_revert(ctx):
+    """
+    Revert the last migration.
+    """
+    target = list_migrations()[-2]
+    ans = input(f"Will migrate common to {target}\nContinue? [Y]/n ")
+    if "n" in ans:
+        exit("Aborted.")
+    run(["django-admin", "migrate", "common", target])
+
+
+@migrate.command(
+    name="apply",
+    context_settings={"ignore_unknown_options": True},
+)
+@click.argument("options", nargs=-1)
+@click.pass_context
+def migrate_apply(ctx, options):
+    """
+    Run django-admin migrate and forward options to it.\n
+    See migrate apply -- --help for migrate help.
+    """
+    run(["django-admin", "migrate", *options])
+
+
+@migrate.command(
+    name="show",
+    context_settings={"ignore_unknown_options": True},
+)
+@click.argument("options", nargs=-1)
+@click.pass_context
+def migrate_show(ctx, options):
+    run(["django-admin", "showmigrations", *options])
+
+
+@migrate.command(
+    name="make",
+    context_settings={"ignore_unknown_options": True},
+)
+@click.argument("options", nargs=-1)
+@click.pass_context
+def migrate_make(ctx, options):
+    run(["django-admin", "makemigrations", *options])
+
+
+@migrate.command(name="amend")
+@click.pass_context
+def migrate_amend(ctx):
+    # find old migration head
+    migrations = list_migrations()
+    if len(migrations) == 0:
+        exit(f"Needs at least 1 migrations. Current: {migrations}")
+    old_head = migrations[-1]
+    LOG.info(f"Current head: {old_head}")
+
+    # generate and find new migration head
+    run(["django-admin", "makemigrations", "common"])
+    new_head = set(list_migrations()) - set(migrations)
+    if new_head:
+        new_head = list(new_head)[0]
+    else:
+        exit("No new migration.")
+    LOG.info(f"New head: {new_head}")
+
+    # Some times when you run amend multiple times, the new_head migration that was
+    # previously applied won't run for a second time. To combat this, fake a migration
+    # to the old_head.
+    run(["django-admin", "migrate", "--fake", "common", old_head])
+    # Must apply before generating squashed migration to avoid the error:
+    # CommandError: Cannot find a migration matching '0005_auto_20201201_1719.py' from
+    # app 'common'.
+    run(["django-admin", "migrate", "common", new_head])
+
+    # generate and find squashed migration
+    migrations = list_migrations()
+    run(["django-admin", "squashmigrations", "--no-input", "common", old_head, new_head])
+    squashed_migration = list(set(list_migrations()) - set(migrations))[0]
+
+    # remove new_head, rename squashed_migration to the old_head, also remove the
+    # "replaces = " part of the migration
+    (settings.MIGRATION_DIR / "common" / f"{new_head}.py").unlink()
+
+    file_content = (
+        (settings.MIGRATION_DIR / "common" / f"{squashed_migration}.py")
+        .read_text()
+        .split("\n")
+    )
+    file_content = filter(lambda ln: "replaces = " not in ln, file_content)
+    (settings.MIGRATION_DIR / "common" / f"{old_head}.py").write_text(
+        "\n".join(file_content)
+    )
+    (settings.MIGRATION_DIR / "common" / f"{squashed_migration}.py").unlink()
+
+    run(["django-admin", "migrate", "--fake", "common", old_head])
+
+
+if __name__ == "__main__":
+    migrate(obj={})

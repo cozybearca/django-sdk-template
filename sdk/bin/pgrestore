@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+
+from pathlib import Path
+from subprocess import DEVNULL
+
+import click
+from tools import (
+    execute_docker_chown,
+    execute_docker_cp,
+    execute_docker_exec,
+    handle_get_info_for_service,
+)
+
+
+@click.command()
+@click.argument("pgnode")
+@click.argument(
+    "pgdump",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+)
+def main(pgnode, pgdump):
+    pgdump = Path(pgdump)
+    if "n" in input(
+        "WARNING: pgrestore will remove existing database.\nAre you sure? [Y]/n"
+    ):
+        exit("Aborted.")
+    info = handle_get_info_for_service(pgnode, node=1)
+    user = None  # use container default
+
+    execute_docker_exec(
+        info,
+        user=user,
+        cmd=[
+            "psql",
+            "-c",
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'site';",
+        ],
+        run_kwargs={"stdout": DEVNULL},
+    )
+
+    uploaded_dump = f"/tmp/{pgdump.name}"
+    try:
+        execute_docker_cp(
+            info, src=str(pgdump), dest=f"{info['container_id']}:{uploaded_dump}"
+        )
+        execute_docker_chown(info, uploaded_dump)
+        execute_docker_exec(
+            info,
+            user=user,
+            cmd=[
+                "pg_restore",
+                "-d",
+                "postgres",
+                "--exit-on-error",
+                "--verbose",
+                "--create",
+                "--clean",
+                "--if-exists",
+                uploaded_dump,
+            ],
+        )
+    finally:
+        execute_docker_exec(info, user="root", cmd=["rm", "-f", uploaded_dump])
+
+
+if __name__ == "__main__":
+    main()

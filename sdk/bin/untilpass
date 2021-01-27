@@ -1,0 +1,24 @@
+#!/usr/bin/env python3.8
+import sys
+from subprocess import run
+
+import click
+
+
+@click.command()
+@click.option("-s", "--shell", required=False)
+@click.argument("args", nargs=-1)
+def main(shell, args):
+    if shell and args:
+        exit("--shell and args are exclusive.")
+    while True:
+        if shell:
+            proc = run(shell, shell=True)
+        else:
+            proc = run(args)
+        if proc.returncode == 0:
+            sys.exit(proc.returncode)
+
+
+if __name__ == "__main__":
+    main()

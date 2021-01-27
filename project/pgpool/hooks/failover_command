@@ -1,0 +1,95 @@
+#!/usr/bin/env python3.8
+
+from subprocess import run
+
+import click
+
+
+@click.command()
+@click.argument("failed_node_id")
+@click.argument("failed_node_host_name")
+@click.argument("failed_node_port_number")
+@click.argument("failed_node_database_cluster_path")
+@click.argument("new_master_node_id")
+@click.argument("new_master_node_hostname")
+@click.argument("old_master_node_id")
+@click.argument("old_primary_node_id")
+@click.argument("new_master_port_number")
+@click.argument("new_master_database_cluster_path")
+@click.argument("old_primary_node_hostname")
+@click.argument("old_primary_node_port_number")
+def main(
+    failed_node_id,
+    failed_node_host_name,
+    failed_node_port_number,
+    failed_node_database_cluster_path,
+    new_master_node_id,
+    new_master_node_hostname,
+    old_master_node_id,
+    old_primary_node_id,
+    new_master_port_number,
+    new_master_database_cluster_path,
+    old_primary_node_hostname,
+    old_primary_node_port_number,
+):
+    """
+    Reference:
+    https://www.pgpool.net/docs/pgpool-II-3.7.5/en/html/runtime-config-failover.html
+
+    The "master node" referes to a node which has the "youngest (or the smallest) node
+    id" among live the database nodes. In streaming replication mode, this may be
+    different from primary node. In Table 5-6, %m is the new master node chosen by
+    Pgpool-II. It is the node being assigned the youngest (smallest) node id which is
+    alive. For example if you have 3 nodes, namely node 0, 1, 2. Suppose node 1 the
+    primary and all of them are healthy (no down node). If node 1 fails,
+    failover_command is called with %m = 0.
+
+    When a failover is performed, basically Pgpool-II kills all its child processes,
+    which will in turn terminate all the active sessions to Pgpool-II. After that
+    Pgpool-II invokes the failover_command and after the command completion Pgpool-II
+    starts new child processes which makes it ready again to accept client connections.
+
+    However from Pgpool-II 3.6, In the steaming replication mode, client sessions will
+    not be disconnected when a fail-over occurs any more if the session does not use the
+    failed standby server. If the primary server goes down, still all sessions will be
+    disconnected. Health check timeout case will also cause the full session
+    disconnection. Other health check error, including retry over case does not trigger
+    full session disconnection.
+    """
+    print("================================")
+    print(" A failover has happened!")
+    print("================================")
+    print(f"{failed_node_id=}")
+    print(f"{failed_node_host_name=}")
+    print(f"{failed_node_port_number=}")
+    print(f"{failed_node_database_cluster_path=}")
+    print(f"{old_primary_node_id=} # this was the old primary node")
+    print(f"{old_primary_node_hostname=}")
+    print(f"{old_primary_node_port_number=}")
+    print(f"{old_master_node_id=}")
+    print(f"{new_master_node_id=}")
+    print(f"{new_master_node_hostname=} # this node should become the new primary")
+    print(f"{new_master_port_number=}")
+    print(f"{new_master_database_cluster_path=}")
+    print(f"The failed node hostname is {failed_node_host_name}")
+    if new_master_node_id == "-1":
+        exit("All nodes has failed, not sure what to do.")
+
+    if failed_node_id == old_primary_node_id:
+        print("Attempting to promote a standby node...")
+        proc = run(
+            [
+                "ssh",
+                f"postgres@{new_master_node_hostname}",
+                "/opt/bin/rep",
+                "standby",
+                "promote",
+            ]
+        )
+        exit(proc.returncode)
+    else:
+        print(f"Sandby {failed_node_host_name} node failed, not sure what to do.")
+
+
+if __name__ == "__main__":
+    main()

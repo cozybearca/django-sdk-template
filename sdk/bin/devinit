@@ -1,0 +1,6 @@
+#!/bin/bash
+
+dx pg1 -- rep init
+dx pg1 -- createsite
+migrate apply
+django-admin createcachetable

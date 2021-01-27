@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+import os
+from pathlib import Path
+from subprocess import DEVNULL, Popen, run
+
+import click
+
+
+@click.command()
+def main():
+
+    os.chdir("/")  # prevent /project directory not loaded
+
+    run(["wait-docker"], check=True)
+    run(["docker", "swarm", "init"])  # ignore error when already in swarm
+    run(["wait-swarm"], check=True)
+
+    run(["sleep", "inf"])
+
+
+main()

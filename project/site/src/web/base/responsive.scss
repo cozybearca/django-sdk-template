@@ -1,0 +1,33 @@
+$max-site-width: 1920px;
+$min-site-width: 980px;
+
+$w1920up: screen and (min-width: 1920px);
+$w1440up: screen and (min-width: 1440px);
+$w1366up: screen and (min-width: 1366px);
+$w1280up: screen and (min-width: 1280px);
+$w1080up: screen and (min-width: 1080px);
+$mobile: screen and (max-width: 850px);
+
+html {
+    font-size: $min-site-width / 1440 * 17;
+    min-width: $min-site-width;
+    position: relative;
+}
+
+@media screen and (min-width: #{$min-site-width}) {
+    html {
+        font-size: calc(100vw / 1440 * 17);
+    }
+}
+
+@media screen and (min-width: #{$max-site-width}) {
+    html {
+        font-size: $max-site-width / 1440 * 17;
+
+        body,
+        footer {
+            max-width: $max-site-width;
+            margin: auto;
+        }
+    }
+}

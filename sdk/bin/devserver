@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+
+import os
+import signal
+from pathlib import Path
+from subprocess import Popen, run
+
+import click
+
+PROJ_NAME = os.environ["PROJ_NAME"]
+SITE_ROOT = Path(os.environ["SITE_ROOT"])
+
+
+@click.command()
+def main():
+    os.environ.update(
+        {"DEBUG": "1", "LOG_CONSOLE_LEVEL": "DEBUG", "ENABLE_DJANGO_SILK": "0"}
+    )
+
+    devserver = Popen(["django-admin", "runserver", "0.0.0.0:8000"])
+    webpack = Popen(["webpack-cli", "-w"], cwd=f"{SITE_ROOT}/src/web")
+
+    def signal_handler(sig, frame):
+        print("Stopping...")
+        devserver.kill()
+        webpack.kill()
+        devserver.wait()
+        webpack.wait()
+        print("Stopped.")
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    run("sleep inf", shell=True)
+
+
+if __name__ == "__main__":
+    main()

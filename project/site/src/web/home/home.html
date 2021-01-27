@@ -1,0 +1,17 @@
+{% extends 'home/document.html' %} {% block body %}
+<div data-bind="foreach: {data: list, as: 'item'}">
+    <div>
+        Item:
+        <span data-bind="text: item"></span>
+        <span data-bind="if: item > 0">positve</span>
+        <span data-bind="if: item == 0">zero</span>
+        <span data-bind="if: item < 0">negative</span>
+    </div>
+</div>
+<div>
+    <button data-bind="click: plus">plus</button>
+    <button data-bind="click: minus">minus</button>
+    <button data-bind="click: add">add</button>
+    <button data-bind="click: remove">remove</button>
+</div>
+{% endblock body %}

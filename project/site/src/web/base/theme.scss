@@ -1,0 +1,57 @@
+$theme-red: #f55b56;
+$secondary-theme-red: #f78986;
+
+.theme-red {
+    color: $theme-red;
+}
+
+$theme-yellow: #ffd982;
+$theme-pink: #ffe8e8;
+
+$theme-page-background-color-gray: #fafafa;
+
+$theme-green: #24ad64;
+$secondary-theme-green: #a7cab8;
+$theme-blue: #016c9e;
+$secondary-theme-blue: #94bacc;
+
+$focused-input-box-shadow: 0 0 2px lighten($theme-blue, 20%);
+$focused-input-border-color: lighten($theme-blue, 20%);
+
+/* button colors */
+$button-font-gray: #333;
+$button-disabled-background-gray: #eaeaea;
+$button-disabled-font-gray: #888;
+$button-background-gray: #eaeaea;
+$button-background-gray-hover: #eee;
+
+/* button border, button background on hover */
+$button-border-gray: #ddd;
+
+$clickable-inactive-border-color: #ddd;
+$clickable-active-border-color: #94bacc;
+
+$input-border: 1px solid #ddd;
+$large-border-radius: 7px;
+$medium-border-radius: 5px;
+$small-border-radius: 3px;
+
+$default-font-color: #333;
+
+@mixin primary-button-color {
+    border: 1px solid $theme-red;
+    background-color: $theme-red;
+
+    color: #fff;
+    font-size: 1em;
+
+    &:hover {
+        background-color: darken($theme-red, 5%);
+    }
+
+    &:disabled {
+        color: $button-disabled-font-gray;
+        border: 1px solid $button-disabled-background-gray;
+        background-color: $button-disabled-background-gray;
+    }
+}
